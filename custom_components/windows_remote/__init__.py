@@ -11,7 +11,13 @@ from .api import WindowsRemoteClient
 from .const import CONF_API_KEY, CONF_HOST, CONF_PORT, DOMAIN
 from .coordinator import WindowsRemoteCoordinator
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.BUTTON]
+PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SWITCH,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
