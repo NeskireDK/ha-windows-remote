@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from urllib.parse import quote
 
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
+
+_TIMEOUT = aiohttp.ClientTimeout(total=10)
 
 
 class PcRemoteClient:
@@ -35,16 +38,18 @@ class PcRemoteClient:
             async with self._session.get(
                 f"{self._base_url}/api/health",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
                 result = await resp.json()
                 if not result.get("success", True):
-                    _LOGGER.warning("Health endpoint returned failure: %s", result.get("message"))
+                    msg = result.get("message", "Unknown error")
+                    _LOGGER.warning("API call failed: %s", msg)
+                    raise CannotConnectError(f"API error: {msg}")
                 return result.get("data", result)
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -59,12 +64,12 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/system/sleep",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -79,16 +84,18 @@ class PcRemoteClient:
             async with self._session.get(
                 f"{self._base_url}/api/audio/devices",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
                 result = await resp.json()
                 if not result.get("success", True):
-                    _LOGGER.warning("get_audio_devices returned failure: %s", result.get("message"))
+                    msg = result.get("message", "Unknown error")
+                    _LOGGER.warning("API call failed: %s", msg)
+                    raise CannotConnectError(f"API error: {msg}")
                 return result.get("data", result)
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -99,16 +106,18 @@ class PcRemoteClient:
             async with self._session.get(
                 f"{self._base_url}/api/audio/current",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
                 result = await resp.json()
                 if not result.get("success", True):
-                    _LOGGER.warning("get_current_audio returned failure: %s", result.get("message"))
+                    msg = result.get("message", "Unknown error")
+                    _LOGGER.warning("API call failed: %s", msg)
+                    raise CannotConnectError(f"API error: {msg}")
                 return result.get("data", result)
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -119,12 +128,12 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/audio/set/{quote(device_name, safe='')}",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -135,12 +144,12 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/audio/volume/{level}",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -155,16 +164,18 @@ class PcRemoteClient:
             async with self._session.get(
                 f"{self._base_url}/api/monitor/profiles",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
                 result = await resp.json()
                 if not result.get("success", True):
-                    _LOGGER.warning("get_monitor_profiles returned failure: %s", result.get("message"))
+                    msg = result.get("message", "Unknown error")
+                    _LOGGER.warning("API call failed: %s", msg)
+                    raise CannotConnectError(f"API error: {msg}")
                 return result.get("data", result)
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -175,12 +186,12 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/monitor/set/{quote(profile, safe='')}",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -191,16 +202,18 @@ class PcRemoteClient:
             async with self._session.get(
                 f"{self._base_url}/api/monitor/list",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
                 result = await resp.json()
                 if not result.get("success", True):
-                    _LOGGER.warning("get_monitors returned failure: %s", result.get("message"))
+                    msg = result.get("message", "Unknown error")
+                    _LOGGER.warning("API call failed: %s", msg)
+                    raise CannotConnectError(f"API error: {msg}")
                 return result.get("data", result)
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -211,12 +224,12 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/monitor/solo/{quote(monitor_id, safe='')}",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -227,12 +240,12 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/monitor/enable/{quote(monitor_id, safe='')}",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -243,12 +256,12 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/monitor/disable/{quote(monitor_id, safe='')}",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -259,12 +272,12 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/monitor/primary/{quote(monitor_id, safe='')}",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -279,16 +292,18 @@ class PcRemoteClient:
             async with self._session.get(
                 f"{self._base_url}/api/app/status",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
                 result = await resp.json()
                 if not result.get("success", True):
-                    _LOGGER.warning("get_apps returned failure: %s", result.get("message"))
+                    msg = result.get("message", "Unknown error")
+                    _LOGGER.warning("API call failed: %s", msg)
+                    raise CannotConnectError(f"API error: {msg}")
                 return result.get("data", result)
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -299,12 +314,12 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/app/launch/{quote(app_key, safe='')}",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err
@@ -315,12 +330,12 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/app/kill/{quote(app_key, safe='')}",
                 headers=self._headers,
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=_TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")
                 resp.raise_for_status()
-        except aiohttp.ClientConnectorError as err:
+        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise CannotConnectError(
                 f"Cannot connect to {self._base_url}"
             ) from err

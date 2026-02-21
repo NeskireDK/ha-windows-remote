@@ -53,7 +53,7 @@ class PcRemoteAudioOutputSelect(
     @property
     def options(self) -> list[str]:
         """Return the list of available audio output devices."""
-        return [d["name"] for d in self.coordinator.data.audio_devices]
+        return [d.get("name", "") for d in self.coordinator.data.audio_devices]
 
     @property
     def current_option(self) -> str | None:
@@ -127,21 +127,21 @@ class PcRemoteMonitorSoloSelect(
     @property
     def options(self) -> list[str]:
         """Return the list of connected monitor names."""
-        return [m["name"] for m in self.coordinator.data.monitors]
+        return [m.get("name", "") for m in self.coordinator.data.monitors]
 
     @property
     def current_option(self) -> str | None:
         """Return the primary monitor name."""
         for m in self.coordinator.data.monitors:
             if m.get("isPrimary"):
-                return m["name"]
+                return m.get("name")
         return None
 
     def _monitor_id_for_name(self, name: str) -> str | None:
         """Resolve a friendly name to a monitor ID."""
         for m in self.coordinator.data.monitors:
-            if m["name"] == name:
-                return m["monitorId"]
+            if m.get("name") == name:
+                return m.get("monitorId")
         return None
 
     async def async_select_option(self, option: str) -> None:

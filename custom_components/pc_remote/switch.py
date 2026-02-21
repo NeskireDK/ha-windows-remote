@@ -42,8 +42,8 @@ async def async_setup_entry(
                 coordinator,
                 client,
                 entry,
-                app["key"],
-                app.get("displayName", app["key"]),
+                app.get("key", ""),
+                app.get("displayName", app.get("key", "unknown")),
             )
         )
 
@@ -80,7 +80,11 @@ class PcRemotePowerSwitch(
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Wake the PC via Wake-on-LAN."""
-        await self.hass.async_add_executor_job(send_magic_packet, self._mac)
+        try:
+            await self.hass.async_add_executor_job(send_magic_packet, self._mac)
+        except (ValueError, OSError) as err:
+            _LOGGER.error("Failed to send WoL packet: %s", err)
+            return
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
@@ -117,8 +121,8 @@ class PcRemoteAppSwitch(
     def is_on(self) -> bool | None:
         """Return True if the app is running."""
         for app in self.coordinator.data.apps:
-            if app["key"] == self._app_key:
-                return app["isRunning"]
+            if app.get("key") == self._app_key:
+                return app.get("isRunning")
         return None
 
     async def async_turn_on(self, **kwargs: Any) -> None:

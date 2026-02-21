@@ -7,6 +7,7 @@ from datetime import timedelta
 import logging
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import CannotConnectError, InvalidAuthError, PcRemoteClient
@@ -56,22 +57,22 @@ class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
         except CannotConnectError as err:
             raise UpdateFailed(f"Cannot connect: {err}") from err
         except InvalidAuthError as err:
-            raise UpdateFailed("Invalid API key") from err
+            raise ConfigEntryAuthFailed("Invalid API key") from err
         except Exception as err:  # noqa: BLE001
             raise UpdateFailed(f"Unexpected error: {err}") from err
 
         # Fetch audio state
         try:
             data.audio_devices = await self.client.get_audio_devices()
+            current = next(
+                (d for d in data.audio_devices if d.get("isDefault")),
+                None,
+            )
+            if current:
+                data.current_audio_device = current.get("name")
+                data.volume = current.get("volume")
         except Exception as err:  # noqa: BLE001
             _LOGGER.debug("Failed to fetch audio devices: %s", err)
-
-        try:
-            current = await self.client.get_current_audio()
-            data.current_audio_device = current.get("name")
-            data.volume = current.get("volume")
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.debug("Failed to fetch current audio: %s", err)
 
         # Fetch monitor profiles
         try:
