@@ -9,6 +9,13 @@
           "port": "Port",
           "api_key": "API Key"
         }
+      },
+      "zeroconf_confirm": {
+        "title": "Windows Remote discovered",
+        "description": "A Windows Remote service was found at {host}:{port}. Enter the API key to connect.",
+        "data": {
+          "api_key": "API Key"
+        }
       }
     },
     "error": {
