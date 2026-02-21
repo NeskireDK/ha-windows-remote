@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to PC Remote",
+        "description": "Enter the connection details for your PC running the PC Remote service.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "api_key": "API Key"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "PC Remote discovered",
+        "description": "A PC Remote service was found at {host}:{port}. Enter the API key to connect.",
+        "data": {
+          "api_key": "API Key"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the service. Check host and port.",
+      "invalid_auth": "Invalid API key.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This device is already configured."
+    }
+  }
+}
