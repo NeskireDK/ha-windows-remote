@@ -1,0 +1,83 @@
+"""Switch platform for the Windows Remote integration."""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from homeassistant.components.switch import SwitchEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .api import WindowsRemoteClient
+from .const import CONF_HOST, DOMAIN
+from .coordinator import WindowsRemoteCoordinator
+
+_LOGGER = logging.getLogger(__name__)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the switch platform."""
+    data = hass.data[DOMAIN][entry.entry_id]
+    coordinator: WindowsRemoteCoordinator = data["coordinator"]
+    client: WindowsRemoteClient = data["client"]
+
+    entities = [
+        WindowsRemoteAppSwitch(coordinator, client, entry, app["key"], app["displayName"])
+        for app in coordinator.data.apps
+    ]
+    async_add_entities(entities)
+
+
+class WindowsRemoteAppSwitch(
+    CoordinatorEntity[WindowsRemoteCoordinator], SwitchEntity
+):
+    """Switch that launches or kills an app on the Windows PC."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: WindowsRemoteCoordinator,
+        client: WindowsRemoteClient,
+        entry: ConfigEntry,
+        app_key: str,
+        display_name: str,
+    ) -> None:
+        """Initialize the switch."""
+        super().__init__(coordinator)
+        self._client = client
+        self._app_key = app_key
+        self._attr_name = display_name
+        self._attr_unique_id = f"{entry.entry_id}_app_{app_key}"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry.entry_id)},
+            "name": f"Windows Remote ({entry.data[CONF_HOST]})",
+            "manufacturer": "Windows Remote",
+            "model": "PC",
+            "configuration_url": f"http://{entry.data[CONF_HOST]}:{entry.data['port']}",
+        }
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return True if the app is running."""
+        for app in self.coordinator.data.apps:
+            if app["key"] == self._app_key:
+                return app["isRunning"]
+        return None
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Launch the app."""
+        await self._client.launch_app(self._app_key)
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Kill the app."""
+        await self._client.kill_app(self._app_key)
+        await self.coordinator.async_request_refresh()
