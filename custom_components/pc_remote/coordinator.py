@@ -68,7 +68,7 @@ class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
 
         try:
             current = await self.client.get_current_audio()
-            data.current_audio_device = current.get("device")
+            data.current_audio_device = current.get("name")
             data.volume = current.get("volume")
         except Exception as err:  # noqa: BLE001
             _LOGGER.debug("Failed to fetch current audio: %s", err)
