@@ -20,12 +20,18 @@ DEFAULT_PORT = 5000
 DEFAULT_SCAN_INTERVAL = 30
 
 
-def build_device_info(entry: ConfigEntry) -> DeviceInfo:
+def build_device_info(
+    entry: ConfigEntry,
+    machine_name: str = "",
+    sw_version: str = "",
+) -> DeviceInfo:
     """Build shared device info for all entities."""
+    display_name = machine_name or entry.data.get(CONF_HOST, "PC Remote")
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        name=f"PC Remote ({entry.data[CONF_HOST]})",
+        name=f"PC Remote ({display_name})",
         manufacturer="PC Remote",
-        model="PC",
+        model="Windows Service",
+        sw_version=sw_version or None,
         configuration_url=f"http://{entry.data[CONF_HOST]}:{entry.data[CONF_PORT]}",
     )

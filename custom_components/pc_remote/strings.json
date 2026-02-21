@@ -1,9 +1,18 @@
 {
   "entity": {
+    "button": {
+      "sleep": { "name": "Sleep" }
+    },
+    "select": {
+      "audio_output": { "name": "Audio Output" },
+      "monitor_profile": { "name": "Monitor Profile" },
+      "active_monitor": { "name": "Active Monitor" }
+    },
+    "number": {
+      "volume": { "name": "Volume" }
+    },
     "switch": {
-      "power": {
-        "name": "Power"
-      }
+      "power": { "name": "Power" }
     }
   },
   "config": {

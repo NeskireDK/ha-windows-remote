@@ -21,6 +21,8 @@ class PcRemoteData:
     """Data returned by the coordinator."""
 
     online: bool = False
+    machine_name: str = ""
+    service_version: str = ""
     audio_devices: list[dict] = field(default_factory=list)
     current_audio_device: str | None = None
     volume: int | None = None
@@ -52,10 +54,13 @@ class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
 
         # Check health first
         try:
-            await self.client.get_health()
+            health = await self.client.get_health()
             data.online = True
-        except CannotConnectError as err:
-            raise UpdateFailed(f"Cannot connect: {err}") from err
+            data.machine_name = health.get("machineName", "")
+            data.service_version = health.get("version", "")
+        except CannotConnectError:
+            data.online = False
+            return data
         except InvalidAuthError as err:
             raise ConfigEntryAuthFailed("Invalid API key") from err
         except Exception as err:  # noqa: BLE001

@@ -35,7 +35,7 @@ class PcRemoteAudioOutputSelect(
     """Select entity for choosing the active audio output device."""
 
     _attr_has_entity_name = True
-    _attr_name = "Audio Output"
+    _attr_translation_key = "audio_output"
     _attr_icon = "mdi:speaker"
 
     def __init__(
@@ -48,7 +48,16 @@ class PcRemoteAudioOutputSelect(
         super().__init__(coordinator)
         self._client = client
         self._attr_unique_id = f"{entry.entry_id}_audio_output"
-        self._attr_device_info = build_device_info(entry)
+        self._attr_device_info = build_device_info(
+            entry,
+            machine_name=coordinator.data.machine_name,
+            sw_version=coordinator.data.service_version,
+        )
+
+    @property
+    def available(self) -> bool:
+        """Available only when the PC is online."""
+        return self.coordinator.last_update_success and self.coordinator.data.online
 
     @property
     def options(self) -> list[str]:
@@ -72,7 +81,7 @@ class PcRemoteMonitorProfileSelect(
     """Select entity for choosing a monitor profile."""
 
     _attr_has_entity_name = True
-    _attr_name = "Monitor Profile"
+    _attr_translation_key = "monitor_profile"
     _attr_icon = "mdi:monitor-shimmer"
 
     def __init__(
@@ -85,7 +94,16 @@ class PcRemoteMonitorProfileSelect(
         super().__init__(coordinator)
         self._client = client
         self._attr_unique_id = f"{entry.entry_id}_monitor_profile"
-        self._attr_device_info = build_device_info(entry)
+        self._attr_device_info = build_device_info(
+            entry,
+            machine_name=coordinator.data.machine_name,
+            sw_version=coordinator.data.service_version,
+        )
+
+    @property
+    def available(self) -> bool:
+        """Available only when the PC is online."""
+        return self.coordinator.last_update_success and self.coordinator.data.online
 
     @property
     def options(self) -> list[str]:
@@ -109,7 +127,7 @@ class PcRemoteMonitorSoloSelect(
     """Select entity for choosing the sole active monitor."""
 
     _attr_has_entity_name = True
-    _attr_name = "Active Monitor"
+    _attr_translation_key = "active_monitor"
     _attr_icon = "mdi:monitor"
 
     def __init__(
@@ -122,25 +140,37 @@ class PcRemoteMonitorSoloSelect(
         super().__init__(coordinator)
         self._client = client
         self._attr_unique_id = f"{entry.entry_id}_monitor_solo"
-        self._attr_device_info = build_device_info(entry)
+        self._attr_device_info = build_device_info(
+            entry,
+            machine_name=coordinator.data.machine_name,
+            sw_version=coordinator.data.service_version,
+        )
+
+    @property
+    def available(self) -> bool:
+        """Available only when the PC is online."""
+        return self.coordinator.last_update_success and self.coordinator.data.online
 
     @property
     def options(self) -> list[str]:
-        """Return the list of connected monitor names."""
-        return [m.get("name", "") for m in self.coordinator.data.monitors]
+        """Return the list of connected monitor names, preferring the EDID model name."""
+        return [
+            m.get("monitorName") or m.get("name", "")
+            for m in self.coordinator.data.monitors
+        ]
 
     @property
     def current_option(self) -> str | None:
         """Return the primary monitor name."""
         for m in self.coordinator.data.monitors:
             if m.get("isPrimary"):
-                return m.get("name")
+                return m.get("monitorName") or m.get("name")
         return None
 
     def _monitor_id_for_name(self, name: str) -> str | None:
-        """Resolve a friendly name to a monitor ID."""
+        """Resolve a display name to a monitor ID."""
         for m in self.coordinator.data.monitors:
-            if m.get("name") == name:
+            if (m.get("monitorName") or m.get("name")) == name:
                 return m.get("monitorId")
         return None
 

@@ -71,7 +71,16 @@ class PcRemotePowerSwitch(
         self._client = client
         self._mac = entry.data[CONF_MAC_ADDRESS]
         self._attr_unique_id = f"{entry.entry_id}_power"
-        self._attr_device_info = build_device_info(entry)
+        self._attr_device_info = build_device_info(
+            entry,
+            machine_name=coordinator.data.machine_name,
+            sw_version=coordinator.data.service_version,
+        )
+
+    @property
+    def available(self) -> bool:
+        """Power switch is always available (WoL works when PC is off)."""
+        return True
 
     @property
     def is_on(self) -> bool | None:
@@ -115,7 +124,16 @@ class PcRemoteAppSwitch(
         self._app_key = app_key
         self._attr_name = display_name
         self._attr_unique_id = f"{entry.entry_id}_app_{app_key}"
-        self._attr_device_info = build_device_info(entry)
+        self._attr_device_info = build_device_info(
+            entry,
+            machine_name=coordinator.data.machine_name,
+            sw_version=coordinator.data.service_version,
+        )
+
+    @property
+    def available(self) -> bool:
+        """Available only when the PC is online."""
+        return self.coordinator.last_update_success and self.coordinator.data.online
 
     @property
     def is_on(self) -> bool | None:

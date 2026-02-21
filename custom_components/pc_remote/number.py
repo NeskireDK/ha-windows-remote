@@ -31,7 +31,7 @@ class PcRemoteVolumeNumber(
     """Number entity for controlling the system volume."""
 
     _attr_has_entity_name = True
-    _attr_name = "Volume"
+    _attr_translation_key = "volume"
     _attr_icon = "mdi:volume-high"
     _attr_native_min_value = 0
     _attr_native_max_value = 100
@@ -47,7 +47,16 @@ class PcRemoteVolumeNumber(
         super().__init__(coordinator)
         self._client = client
         self._attr_unique_id = f"{entry.entry_id}_volume"
-        self._attr_device_info = build_device_info(entry)
+        self._attr_device_info = build_device_info(
+            entry,
+            machine_name=coordinator.data.machine_name,
+            sw_version=coordinator.data.service_version,
+        )
+
+    @property
+    def available(self) -> bool:
+        """Available only when the PC is online."""
+        return self.coordinator.last_update_success and self.coordinator.data.online
 
     @property
     def native_value(self) -> float | None:

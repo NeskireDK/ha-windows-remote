@@ -35,7 +35,7 @@ class PcRemoteSleepButton(
     """Button that puts the PC to sleep."""
 
     _attr_has_entity_name = True
-    _attr_name = "Sleep"
+    _attr_translation_key = "sleep"
     _attr_icon = "mdi:power-sleep"
 
     def __init__(
@@ -48,7 +48,16 @@ class PcRemoteSleepButton(
         super().__init__(coordinator)
         self._client = client
         self._attr_unique_id = f"{entry.entry_id}_sleep"
-        self._attr_device_info = build_device_info(entry)
+        self._attr_device_info = build_device_info(
+            entry,
+            machine_name=coordinator.data.machine_name,
+            sw_version=coordinator.data.service_version,
+        )
+
+    @property
+    def available(self) -> bool:
+        """Available only when the PC is online."""
+        return self.coordinator.last_update_success and self.coordinator.data.online
 
     async def async_press(self) -> None:
         """Send the sleep command."""
