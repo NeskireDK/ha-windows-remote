@@ -100,28 +100,6 @@ class PcRemoteClient:
                 f"Cannot connect to {self._base_url}"
             ) from err
 
-    async def get_current_audio(self) -> dict:
-        """Get the current audio device and volume."""
-        try:
-            async with self._session.get(
-                f"{self._base_url}/api/audio/current",
-                headers=self._headers,
-                timeout=_TIMEOUT,
-            ) as resp:
-                if resp.status == 401:
-                    raise InvalidAuthError("Invalid API key")
-                resp.raise_for_status()
-                result = await resp.json()
-                if not result.get("success", True):
-                    msg = result.get("message", "Unknown error")
-                    _LOGGER.warning("API call failed: %s", msg)
-                    raise CannotConnectError(f"API error: {msg}")
-                return result.get("data", result)
-        except (aiohttp.ClientConnectorError, aiohttp.ClientError, asyncio.TimeoutError) as err:
-            raise CannotConnectError(
-                f"Cannot connect to {self._base_url}"
-            ) from err
-
     async def set_audio_device(self, device_name: str) -> None:
         """Set the active audio output device."""
         try:

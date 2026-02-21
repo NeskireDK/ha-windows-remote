@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -46,17 +47,22 @@ class PcRemoteVolumeNumber(
         """Initialize the number entity."""
         super().__init__(coordinator)
         self._client = client
+        self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_volume"
-        self._attr_device_info = build_device_info(
-            entry,
-            machine_name=coordinator.data.machine_name,
-            sw_version=coordinator.data.service_version,
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info from latest coordinator data."""
+        return build_device_info(
+            self._entry,
+            machine_name=self.coordinator.data.machine_name,
+            sw_version=self.coordinator.data.service_version,
         )
 
     @property
     def available(self) -> bool:
         """Available only when the PC is online."""
-        return self.coordinator.data.online
+        return super().available and self.coordinator.data.online
 
     @property
     def native_value(self) -> float | None:

@@ -37,7 +37,10 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             health = await client.get_health()
             new_unique_id = health.get("machineName", new_unique_id)
         except CannotConnectError:
-            _LOGGER.warning("PC offline during migration, unique ID unchanged")
+            _LOGGER.warning(
+                "PC offline during migration, will retry on next restart"
+            )
+            return True
         hass.config_entries.async_update_entry(entry, unique_id=new_unique_id, version=2)
         _LOGGER.info("Migrated config entry %s to version 2", entry.entry_id)
     return True
