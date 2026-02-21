@@ -172,6 +172,87 @@ class WindowsRemoteClient:
                 f"Cannot connect to {self._base_url}"
             ) from err
 
+    async def get_monitors(self) -> list[dict]:
+        """Get connected monitors."""
+        try:
+            async with self._session.get(
+                f"{self._base_url}/api/monitor/list",
+                headers=self._headers,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status == 401:
+                    raise InvalidAuthError("Invalid API key")
+                resp.raise_for_status()
+                return await resp.json()
+        except aiohttp.ClientConnectorError as err:
+            raise CannotConnectError(
+                f"Cannot connect to {self._base_url}"
+            ) from err
+
+    async def solo_monitor(self, monitor_id: str) -> None:
+        """Enable only this monitor, disable all others."""
+        try:
+            async with self._session.post(
+                f"{self._base_url}/api/monitor/solo/{monitor_id}",
+                headers=self._headers,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status == 401:
+                    raise InvalidAuthError("Invalid API key")
+                resp.raise_for_status()
+        except aiohttp.ClientConnectorError as err:
+            raise CannotConnectError(
+                f"Cannot connect to {self._base_url}"
+            ) from err
+
+    async def enable_monitor(self, monitor_id: str) -> None:
+        """Enable a monitor."""
+        try:
+            async with self._session.post(
+                f"{self._base_url}/api/monitor/enable/{monitor_id}",
+                headers=self._headers,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status == 401:
+                    raise InvalidAuthError("Invalid API key")
+                resp.raise_for_status()
+        except aiohttp.ClientConnectorError as err:
+            raise CannotConnectError(
+                f"Cannot connect to {self._base_url}"
+            ) from err
+
+    async def disable_monitor(self, monitor_id: str) -> None:
+        """Disable a monitor."""
+        try:
+            async with self._session.post(
+                f"{self._base_url}/api/monitor/disable/{monitor_id}",
+                headers=self._headers,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status == 401:
+                    raise InvalidAuthError("Invalid API key")
+                resp.raise_for_status()
+        except aiohttp.ClientConnectorError as err:
+            raise CannotConnectError(
+                f"Cannot connect to {self._base_url}"
+            ) from err
+
+    async def set_primary_monitor(self, monitor_id: str) -> None:
+        """Set a monitor as the primary display."""
+        try:
+            async with self._session.post(
+                f"{self._base_url}/api/monitor/primary/{monitor_id}",
+                headers=self._headers,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status == 401:
+                    raise InvalidAuthError("Invalid API key")
+                resp.raise_for_status()
+        except aiohttp.ClientConnectorError as err:
+            raise CannotConnectError(
+                f"Cannot connect to {self._base_url}"
+            ) from err
+
     # ------------------------------------------------------------------
     # Apps
     # ------------------------------------------------------------------

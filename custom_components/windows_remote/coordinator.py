@@ -24,6 +24,7 @@ class WindowsRemoteData:
     current_audio_device: str | None = None
     volume: int | None = None
     monitor_profiles: list[str] = field(default_factory=list)
+    monitors: list[dict] = field(default_factory=list)
     apps: list[dict] = field(default_factory=list)
 
 
@@ -79,6 +80,12 @@ class WindowsRemoteCoordinator(DataUpdateCoordinator[WindowsRemoteData]):
             data.monitor_profiles = [p.get("name", p) if isinstance(p, dict) else p for p in profiles]
         except Exception as err:  # noqa: BLE001
             _LOGGER.debug("Failed to fetch monitor profiles: %s", err)
+
+        # Fetch monitors
+        try:
+            data.monitors = await self.client.get_monitors()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Failed to fetch monitors: %s", err)
 
         # Fetch apps
         try:
