@@ -57,7 +57,7 @@ class PcRemoteAudioOutputSelect(
     @property
     def available(self) -> bool:
         """Available only when the PC is online."""
-        return self.coordinator.last_update_success and self.coordinator.data.online
+        return self.coordinator.data.online
 
     @property
     def options(self) -> list[str]:
@@ -103,7 +103,7 @@ class PcRemoteMonitorProfileSelect(
     @property
     def available(self) -> bool:
         """Available only when the PC is online."""
-        return self.coordinator.last_update_success and self.coordinator.data.online
+        return self.coordinator.data.online
 
     @property
     def options(self) -> list[str]:
@@ -149,7 +149,7 @@ class PcRemoteMonitorSoloSelect(
     @property
     def available(self) -> bool:
         """Available only when the PC is online."""
-        return self.coordinator.last_update_success and self.coordinator.data.online
+        return self.coordinator.data.online
 
     @property
     def options(self) -> list[str]:

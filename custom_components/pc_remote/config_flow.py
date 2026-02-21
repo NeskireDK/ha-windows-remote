@@ -49,7 +49,7 @@ STEP_ZEROCONF_CONFIRM_SCHEMA = vol.Schema(
 class PcRemoteConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for PC Remote."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -164,7 +164,7 @@ class PcRemoteConfigFlow(ConfigFlow, domain=DOMAIN):
             )
 
             try:
-                await client.test_connection()
+                health = await client.get_health()
             except CannotConnectError:
                 errors["base"] = "cannot_connect"
             except InvalidAuthError:
@@ -176,6 +176,7 @@ class PcRemoteConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._host = self._discovered_host
                 self._port = self._discovered_port
                 self._api_key = user_input[CONF_API_KEY]
+                self._machine_name = health.get("machineName", "")
                 return await self.async_step_select_mac()
 
         return self.async_show_form(
@@ -196,6 +197,9 @@ class PcRemoteConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             return self._create_entry(user_input[CONF_MAC_ADDRESS])
+
+        if self._host is None or self._port is None:
+            return self.async_abort(reason="unknown")
 
         # Fetch MAC addresses from the health endpoint
         session = async_get_clientsession(self.hass)
@@ -278,7 +282,7 @@ class PcRemoteConfigFlow(ConfigFlow, domain=DOMAIN):
     def _create_entry(self, mac_address: str) -> ConfigFlowResult:
         """Create a config entry with the collected data."""
         return self.async_create_entry(
-            title=f"PC Remote ({self._host})",
+            title=f"PC Remote ({self._machine_name or self._host})",
             data={
                 CONF_HOST: self._host,
                 CONF_PORT: self._port,

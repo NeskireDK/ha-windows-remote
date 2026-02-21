@@ -133,7 +133,7 @@ class PcRemoteAppSwitch(
     @property
     def available(self) -> bool:
         """Available only when the PC is online."""
-        return self.coordinator.last_update_success and self.coordinator.data.online
+        return self.coordinator.data.online
 
     @property
     def is_on(self) -> bool | None:

@@ -57,7 +57,7 @@ class PcRemoteSleepButton(
     @property
     def available(self) -> bool:
         """Available only when the PC is online."""
-        return self.coordinator.last_update_success and self.coordinator.data.online
+        return self.coordinator.data.online
 
     async def async_press(self) -> None:
         """Send the sleep command."""
