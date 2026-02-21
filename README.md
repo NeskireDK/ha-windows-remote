@@ -2,7 +2,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 
-A Home Assistant custom integration for controlling a Windows PC via the [ha-windows-remote-service](https://github.com/YOUR_USERNAME/ha-windows-remote-service).
+A Home Assistant custom integration for controlling a Windows PC via the [ha-windows-remote-service](https://github.com/NeskireDK/ha-windows-remote-service).
 
 ## Installation
 
