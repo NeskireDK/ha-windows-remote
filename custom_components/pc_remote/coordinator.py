@@ -16,9 +16,9 @@ from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# After an action, assume the expected state for this many seconds
-# before trusting polled data again.
-OPTIMISTIC_HOLD_SECONDS = 30
+# After a power action, assume the expected state for this many seconds
+# before trusting polled data again. PC takes time to sleep/wake.
+POWER_HOLD_SECONDS = 30
 
 
 @dataclass
@@ -52,22 +52,11 @@ class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
             update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
         )
         self.client = client
-        self._optimistic: dict[str, tuple[object, float]] = {}
+        self._power_override: tuple[bool, float] | None = None
 
-    def set_optimistic(self, key: str, value: object) -> None:
-        """Set an optimistic override that suppresses polled values temporarily."""
-        self._optimistic[key] = (value, time.monotonic())
-
-    def get_optimistic(self, key: str) -> tuple[bool, object]:
-        """Return (active, value) if the key has an unexpired optimistic override."""
-        entry = self._optimistic.get(key)
-        if entry is None:
-            return False, None
-        value, timestamp = entry
-        if time.monotonic() - timestamp < OPTIMISTIC_HOLD_SECONDS:
-            return True, value
-        del self._optimistic[key]
-        return False, None
+    def set_power_state(self, online: bool) -> None:
+        """Hold an assumed power state until the next poll cycle catches up."""
+        self._power_override = (online, time.monotonic())
 
     async def _async_update_data(self) -> PcRemoteData:
         """Fetch data from the PC Remote service."""
@@ -86,10 +75,13 @@ class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
         except Exception as err:  # noqa: BLE001
             raise UpdateFailed(f"Unexpected error: {err}") from err
 
-        # Apply optimistic online override
-        active, value = self.get_optimistic("online")
-        if active:
-            data.online = value  # type: ignore[assignment]
+        # Apply power override if still within hold window
+        if self._power_override is not None:
+            expected, timestamp = self._power_override
+            if time.monotonic() - timestamp < POWER_HOLD_SECONDS:
+                data.online = expected
+            else:
+                self._power_override = None
 
         if not data.online:
             return data
@@ -106,15 +98,6 @@ class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
                 data.volume = current.get("volume")
         except Exception as err:  # noqa: BLE001
             _LOGGER.debug("Failed to fetch audio devices: %s", err)
-
-        # Apply optimistic audio overrides
-        active, value = self.get_optimistic("volume")
-        if active:
-            data.volume = value  # type: ignore[assignment]
-
-        active, value = self.get_optimistic("current_audio_device")
-        if active:
-            data.current_audio_device = value  # type: ignore[assignment]
 
         # Fetch monitor profiles
         try:

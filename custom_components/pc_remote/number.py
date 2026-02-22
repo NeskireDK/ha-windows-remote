@@ -72,5 +72,5 @@ class PcRemoteVolumeNumber(
     async def async_set_native_value(self, value: float) -> None:
         """Set the volume level."""
         await self._client.set_volume(int(value))
-        self.coordinator.set_optimistic("volume", int(value))
+        self.coordinator.data.volume = int(value)
         self.async_write_ha_state()

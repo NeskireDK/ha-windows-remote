@@ -100,13 +100,13 @@ class PcRemotePowerSwitch(
         except (ValueError, OSError) as err:
             _LOGGER.error("Failed to send WoL packet: %s", err)
             return
-        self.coordinator.set_optimistic("online", True)
+        self.coordinator.set_power_state(True)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Put the PC to sleep."""
         await self._client.sleep()
-        self.coordinator.set_optimistic("online", False)
+        self.coordinator.set_power_state(False)
         self.async_write_ha_state()
 
 

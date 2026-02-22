@@ -78,7 +78,7 @@ class PcRemoteAudioOutputSelect(
     async def async_select_option(self, option: str) -> None:
         """Set the audio output device."""
         await self._client.set_audio_device(option)
-        self.coordinator.set_optimistic("current_audio_device", option)
+        self.coordinator.data.current_audio_device = option
         self.async_write_ha_state()
 
 
