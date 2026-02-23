@@ -79,6 +79,7 @@ action:
                     to: "on"
                 timeout:
                   seconds: 60
+                continue_on_timeout: false
           - action: select.select_option
             target:
               entity_id: !input pc_mode_select

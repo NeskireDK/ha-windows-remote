@@ -89,10 +89,8 @@ class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
             expected, timestamp = self._power_override
             if time.monotonic() - timestamp < POWER_HOLD_SECONDS:
                 data.online = expected
-                if not expected:
-                    data.steam_games = list(self._cached_steam_games)
-                    return data
-                # PC assumed online — fall through to fetch full state below
+                data.steam_games = list(self._cached_steam_games)
+                return data
             else:
                 self._power_override = None
 
