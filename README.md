@@ -45,16 +45,14 @@ App switches are created dynamically based on apps configured in the Windows ser
 
 ## Roadmap
 
-### Wake-and-play
+### Wake-and-play (implemented in v0.9.0)
 
-The Steam media player caches the game list locally, so the source list remains populated even when the PC is off and across HA restarts. The next step is full wake-and-play: selecting a game while the PC is off will automatically wake and launch it.
+The Steam media player caches the game list locally, so the source list remains populated even when the PC is off and across HA restarts. Selecting a game while the PC is off automatically wakes and launches it.
 
-Planned steps:
-
-- [ ] When a game is selected and `online = false`, send a WoL magic packet
-- [ ] Poll `/api/health` until the service responds (PC is up)
-- [ ] Poll `/api/steam/running` until Steam is reachable (Steam may take longer to start than the service)
-- [ ] Launch the game via `/api/steam/run/{appId}`
+- [x] When a game is selected and `online = false`, send a WoL magic packet
+- [x] Poll `/api/health` until the service responds (PC is up)
+- [x] Poll `/api/steam/running` until Steam is reachable (Steam may take longer to start than the service)
+- [x] Launch the game via `/api/steam/run/{appId}`
 
 ## Known Issues
 
@@ -97,7 +95,7 @@ Fix options (service-side):
 
 `GET /api/monitor/profiles` returns an empty list if the `ProfilesPath` directory does not exist next to the service exe. The entity has no options to select.
 
-Fix: create the `monitor-profiles/` directory next to `HaPcRemote.Service.exe` and add `.cfg` files exported from MultiMonitorTool.
+Fix: add `.cfg` files exported from MultiMonitorTool to the `monitor-profiles/` directory next to `HaPcRemote.Service.exe` (created automatically on first run).
 
 ## License
 
