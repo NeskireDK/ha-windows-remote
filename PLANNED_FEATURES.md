@@ -22,6 +22,58 @@ These are documented bugs that undermine trust in the integration.
 
 ---
 
+## Architecture Refactor — Collapse Service + Tray into Single Process *(done in v0.9.1)*
+
+### Background
+
+The old architecture had a Windows Service (SYSTEM session) and a WinForms tray app (user session) communicating via named pipe IPC. Every meaningful feature required the user session anyway — audio, monitors, Steam, app launch. Collapsed everything into the tray process. Kestrel runs inside the tray. No IPC, no session boundary, no `TrayUnavailableException`. Linux gets a natural headless binary as well.
+
+### Releases
+
+#### ~~0.9.2~~ — Extract `HaPcRemote.Core` library *(shipped in v0.9.1)*
+
+- [x] Create `HaPcRemote.Core` class library
+- [x] Move services, interfaces, implementations, endpoints, models into Core
+- [x] `HaPcRemote.Tray` references Core
+- [x] Update test project references
+
+#### ~~0.9.3~~ — Embed Kestrel in Tray, replace IPC with direct calls *(shipped in v0.9.1)*
+
+- [x] Add ASP.NET Core / Kestrel hosting to `HaPcRemote.Tray`
+- [x] Wire all Core services into Tray's DI container
+- [x] Replace IPC wrappers with direct calls (`WindowsSteamPlatform`, `CliRunner`, `Process.Start`)
+- [x] Migrate config path to `%AppData%\HaPcRemote\`
+
+#### ~~0.9.4~~ — Delete Service project, IPC layer, update installer *(shipped in v0.9.1)*
+
+- [x] Delete `HaPcRemote.Service` project
+- [x] Delete IPC layer and wrappers
+- [x] Update Inno Setup installer (no service registration, startup via all-users startup folder, config migration)
+- [x] Update README
+
+#### 0.9.5 — Linux foundation *(service repo)*
+
+Same binary, headless mode, systemd user service.
+
+- [ ] Wrap all WinForms/tray code behind `OperatingSystem.IsWindows()` / `[SupportedOSPlatform]`
+- [ ] Add Linux `IPowerService`: `systemctl suspend` or `loginctl suspend`
+- [ ] Add Linux `ISteamPlatform`: filesystem path (`~/.steam/steam/`), running game via `/proc` or VDF, launch via `xdg-open steam://run/<id>`
+- [ ] Add Linux audio stub (`pactl`-based `ICliRunner` calls) — partial is fine initially
+- [ ] Add headless entry point (Linux): plain Kestrel + mDNS, no tray icon, SIGTERM clean exit
+- [ ] Add systemd user service unit file to release artifacts
+- [ ] Add Linux build job to GitHub Actions CI
+- [ ] Document install steps for Arch / Ubuntu / SteamOS in README
+
+### Key decisions made
+
+- **Why collapse?** Every feature requires the user session. IPC is complexity with no benefit.
+- **Config path**: moves to `%AppData%` (user-owned, no elevation needed for reads/writes)
+- **Native AOT**: dropped — framework-dependent is fine, .NET 10 auto-install already ships
+- **Linux tray**: no system tray on Linux. API key via config file, logs via `journalctl`, updates via package manager — these are Linux-native equivalents, not a degraded experience.
+- **Monitor profiles on Linux**: xrandr/Wayland too fragmented — skip initially, document as known gap
+
+---
+
 ## v1.0
 
 ### 1. PC Mode — `POST /api/system/mode` + `select` entity
@@ -96,18 +148,9 @@ Prerequisite for reducing poll interval to 10s so mode switches feel responsive.
 
 ## v1.1
 
-### 4. Controller Connected Binary Sensor
+### 4. Post-Session Sleep Blueprint
 
-`Windows.Gaming.Input` via tray IPC exposes connected gamepads. HA gets a
-`binary_sensor` that is `on` when at least one controller is connected.
-`extra_state_attributes` lists controller names.
 
-Natural automation trigger: pick up controller → enter couch mode automatically.
-
-- [ ] Service: tray IPC `controllerGetConnected`, expose via `GET /api/system/controllers` *(service)*
-- [ ] Integration: `PcRemoteControllerSensor` in new `binary_sensor.py` platform *(integration)*
-
-### 5. Post-Session Sleep Blueprint
 
 When the Steam media player transitions `playing → idle`, wait N minutes, confirm
 still idle, then sleep the PC. Closes the power-saving loop without manual action.
