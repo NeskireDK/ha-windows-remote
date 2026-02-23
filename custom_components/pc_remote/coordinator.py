@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 # After a power action, assume the expected state for this many seconds
 # before trusting polled data again. PC takes time to sleep/wake.
-POWER_HOLD_SECONDS = 30
+POWER_HOLD_SECONDS = 60
 
 STEAM_GAMES_STORAGE_VERSION = 1
 
@@ -81,26 +81,33 @@ class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
         """Fetch data from the PC Remote service."""
         data = PcRemoteData()
 
-        # Check health first
-        try:
-            health = await self.client.get_health()
-            data.online = True
-            data.machine_name = health.get("machineName", "")
-            data.service_version = health.get("version", "")
-        except CannotConnectError:
-            data.online = False
-        except InvalidAuthError as err:
-            raise ConfigEntryAuthFailed("Invalid API key") from err
-        except Exception as err:  # noqa: BLE001
-            raise UpdateFailed(f"Unexpected error: {err}") from err
-
-        # Apply power override if still within hold window
+        # If within the optimistic window, skip the health check entirely and
+        # return the assumed state. This prevents flickering during the PC
+        # transition period after sleep or WoL.
         if self._power_override is not None:
             expected, timestamp = self._power_override
             if time.monotonic() - timestamp < POWER_HOLD_SECONDS:
                 data.online = expected
+                if not expected:
+                    data.steam_games = list(self._cached_steam_games)
+                    return data
+                # PC assumed online — fall through to fetch full state below
             else:
                 self._power_override = None
+
+        if self._power_override is None:
+            # Check health
+            try:
+                health = await self.client.get_health()
+                data.online = True
+                data.machine_name = health.get("machineName", "")
+                data.service_version = health.get("version", "")
+            except CannotConnectError:
+                data.online = False
+            except InvalidAuthError as err:
+                raise ConfigEntryAuthFailed("Invalid API key") from err
+            except Exception as err:  # noqa: BLE001
+                raise UpdateFailed(f"Unexpected error: {err}") from err
 
         if not data.online:
             # Serve the last known game list so the source_list remains populated
