@@ -11,14 +11,14 @@ the core use case.
 
 These are documented bugs that undermine trust in the integration.
 
-- [ ] **Steam: tray 503** — `POST /api/steam/run/{appId}` returns 200 even when the tray
-  is not running and no game launches. Service should return 503 so HA can surface the
-  error to the user. *(service)*
+- [x] **Steam: tray 503** — `POST /api/steam/run/{appId}` returns 200 even when the tray
+  is not running and no game launches. Fixed in service v0.9.0: `IpcSteamPlatform` throws
+  `TrayUnavailableException` → endpoint returns 503. *(service)*
 
-- [ ] **Steam: running game not in source list** — `GetRunningGameAsync` falls back to
-  `"Unknown ({appId})"` if the games cache isn't warm. Should call `GetGamesAsync()`
-  internally to warm the cache, and inject the running game into the list if it falls
-  outside the top-20 cutoff. *(service)*
+- [x] **Steam: running game not in source list** — `GetRunningGameAsync` falls back to
+  `"Unknown ({appId})"` if the games cache isn't warm. Fixed in service v0.9.0:
+  `GetRunningGameAsync` warms cache on first call and falls back to direct manifest
+  lookup for games outside the top-20. *(service)*
 
 ---
 
