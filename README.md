@@ -39,6 +39,7 @@ Two ways to add the integration:
 | Volume | Number | Master volume (0-100) |
 | Monitor Profile | Select | Apply a saved `.cfg` monitor profile |
 | Active Monitor | Select | Switch to a single monitor (solo mode) |
+| Steam | Media Player | Launch Steam games; shows BUFFERING + wakes PC if offline |
 | {App Name} | Switch | Launch/kill configured apps |
 
 App switches are created dynamically based on apps configured in the Windows service.

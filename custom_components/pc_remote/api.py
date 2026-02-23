@@ -372,7 +372,7 @@ class PcRemoteClient:
             async with self._session.post(
                 f"{self._base_url}/api/steam/run/{app_id}",
                 headers=self._headers,
-                timeout=_TIMEOUT,
+                timeout=aiohttp.ClientTimeout(total=30),
             ) as resp:
                 if resp.status == 401:
                     raise InvalidAuthError("Invalid API key")

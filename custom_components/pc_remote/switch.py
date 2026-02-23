@@ -71,7 +71,7 @@ class PcRemotePowerSwitch(
         super().__init__(coordinator)
         self._client = client
         self._entry = entry
-        self._mac = entry.data[CONF_MAC_ADDRESS]
+        self._mac: str = entry.data.get(CONF_MAC_ADDRESS, "")
         self._attr_unique_id = f"{entry.entry_id}_power"
 
     @property
@@ -95,6 +95,9 @@ class PcRemotePowerSwitch(
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Wake the PC via Wake-on-LAN."""
+        if not self._mac:
+            _LOGGER.error("MAC address not configured, cannot send WoL packet")
+            return
         try:
             await self.hass.async_add_executor_job(send_magic_packet, self._mac)
         except (ValueError, OSError) as err:

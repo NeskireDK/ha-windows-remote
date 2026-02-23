@@ -62,6 +62,7 @@ class PcRemoteSteamPlayer(
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_steam"
         self._wake_target: dict | None = None
+        self._wake_task: asyncio.Task | None = None
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -111,6 +112,11 @@ class PcRemoteSteamPlayer(
         target = self._wake_target or self.coordinator.data.steam_running
         return {"app_id": target.get("appId")} if target else None
 
+    async def async_will_remove_from_hass(self) -> None:
+        """Cancel any pending wake-and-play task on removal."""
+        if self._wake_task and not self._wake_task.done():
+            self._wake_task.cancel()
+
     async def async_select_source(self, source: str) -> None:
         """Launch the selected game."""
         for game in self.coordinator.data.steam_games:
@@ -119,9 +125,13 @@ class PcRemoteSteamPlayer(
                 if app_id is None:
                     return
                 if not self.coordinator.data.online:
+                    if self._wake_task and not self._wake_task.done():
+                        self._wake_task.cancel()
                     self._wake_target = {"appId": app_id, "name": source}
                     self.async_write_ha_state()
-                    self.hass.async_create_task(self._wake_and_play(app_id, source))
+                    self._wake_task = self.hass.async_create_task(
+                        self._wake_and_play(app_id, source)
+                    )
                     return
                 await self._client.steam_run(app_id)
                 self.coordinator.data.steam_running = {"appId": app_id, "name": source}
@@ -141,11 +151,15 @@ class PcRemoteSteamPlayer(
     async def _wake_and_play(self, app_id: int, source: str) -> None:
         """Wake the PC via WoL, then launch the game when Steam is ready."""
         mac = self._entry.data.get(CONF_MAC_ADDRESS)
-        if mac:
-            try:
-                await self.hass.async_add_executor_job(send_magic_packet, mac)
-            except (ValueError, OSError) as err:
-                _LOGGER.error("Failed to send WoL packet: %s", err)
+        if not mac:
+            _LOGGER.warning("Wake-and-play: MAC address not configured, cannot wake PC")
+            self._wake_target = None
+            self.async_write_ha_state()
+            return
+        try:
+            await self.hass.async_add_executor_job(send_magic_packet, mac)
+        except (ValueError, OSError) as err:
+            _LOGGER.error("Failed to send WoL packet: %s", err)
 
         # Poll /api/health until service responds (max 3 minutes, every 5s)
         online = False
@@ -164,15 +178,15 @@ class PcRemoteSteamPlayer(
             self.async_write_ha_state()
             return
 
-        # Retry launch — Steam/tray may not be ready immediately after boot
-        # steam_run() returns 200 silently if tray is down, so we verify via steam_running
+        # Retry launch — Steam/tray may not be ready immediately after boot.
+        # steam_run() returns 200 silently if tray is down, so verify via get_steam_running.
         launched = False
         for attempt in range(4):
             if attempt > 0:
                 await asyncio.sleep(15)
             try:
                 await self._client.steam_run(app_id)
-            except Exception as err:  # noqa: BLE001
+            except CannotConnectError as err:
                 _LOGGER.debug("Wake-and-play steam_run attempt %d: %s", attempt + 1, err)
             await asyncio.sleep(10)
             try:
@@ -180,7 +194,7 @@ class PcRemoteSteamPlayer(
                 if running and running.get("appId") == app_id:
                     launched = True
                     break
-            except Exception:  # noqa: BLE001
+            except CannotConnectError:
                 pass
 
         if not launched:
