@@ -1,215 +1,44 @@
-"""Shared fixtures and homeassistant module stubs for pc_remote tests."""
+"""Shared fixtures and helpers for pc_remote tests."""
 
 from __future__ import annotations
 
-import sys
-from types import ModuleType
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
-# ---------------------------------------------------------------------------
-# Stub out the entire homeassistant package before any integration import
-# ---------------------------------------------------------------------------
-
-def _make_module(name: str) -> ModuleType:
-    mod = ModuleType(name)
-    sys.modules[name] = mod
-    return mod
-
-
-def _stub_homeassistant() -> None:
-    """Register minimal homeassistant stubs so integration modules can be imported."""
-    if "homeassistant" in sys.modules:
-        return
-
-    # Top-level package
-    ha = _make_module("homeassistant")
-
-    # homeassistant.core
-    core = _make_module("homeassistant.core")
-    core.HomeAssistant = MagicMock  # type: ignore[attr-defined]
-    core.callback = lambda f: f  # passthrough decorator
-
-    # homeassistant.exceptions
-    exc = _make_module("homeassistant.exceptions")
-
-    class ConfigEntryAuthFailed(Exception):
-        pass
-
-    class HomeAssistantError(Exception):
-        pass
-
-    exc.ConfigEntryAuthFailed = ConfigEntryAuthFailed  # type: ignore[attr-defined]
-    exc.HomeAssistantError = HomeAssistantError  # type: ignore[attr-defined]
-
-    # homeassistant.const
-    const = _make_module("homeassistant.const")
-
-    class Platform:
-        MEDIA_PLAYER = "media_player"
-        NUMBER = "number"
-        SELECT = "select"
-        SWITCH = "switch"
-
-    const.Platform = Platform  # type: ignore[attr-defined]
-
-    # homeassistant.config_entries
-    ce = _make_module("homeassistant.config_entries")
-    ce.ConfigEntry = MagicMock  # type: ignore[attr-defined]
-
-    # homeassistant.helpers
-    helpers = _make_module("homeassistant.helpers")
-
-    helpers_update = _make_module("homeassistant.helpers.update_coordinator")
-
-    from typing import Generic, TypeVar
-    _T = TypeVar("_T")
-
-    class DataUpdateCoordinator(Generic[_T]):
-        def __init__(self, hass, logger, *, name, update_interval):
-            self.hass = hass
-            self.logger = logger
-            self.name = name
-            self.update_interval = update_interval
-            self.data = None
-            self._listeners: list = []
-
-        async def async_request_refresh(self):
-            pass
-
-        async def async_refresh(self):
-            pass
-
-        def __class_getitem__(cls, item):
-            return cls
-
-    class UpdateFailed(Exception):
-        pass
-
-    class CoordinatorEntity:
-        def __init__(self, coordinator):
-            self.coordinator = coordinator
-
-        @property
-        def available(self) -> bool:
-            return True
-
-        def async_write_ha_state(self):
-            pass
-
-        @property
-        def hass(self):
-            return self.coordinator.hass
-
-        def __class_getitem__(cls, item):
-            return cls
-
-    helpers_update.DataUpdateCoordinator = DataUpdateCoordinator  # type: ignore[attr-defined]
-    helpers_update.UpdateFailed = UpdateFailed  # type: ignore[attr-defined]
-    helpers_update.CoordinatorEntity = CoordinatorEntity  # type: ignore[attr-defined]
-
-    helpers_device = _make_module("homeassistant.helpers.device_registry")
-
-    class DeviceInfo(dict):
-        def __init__(self, **kwargs):
-            super().__init__(**kwargs)
-
-    helpers_device.DeviceInfo = DeviceInfo  # type: ignore[attr-defined]
-
-    helpers_entity = _make_module("homeassistant.helpers.entity_platform")
-    helpers_entity.AddEntitiesCallback = MagicMock  # type: ignore[attr-defined]
-
-    helpers_aiohttp = _make_module("homeassistant.helpers.aiohttp_client")
-    helpers_aiohttp.async_get_clientsession = MagicMock()  # type: ignore[attr-defined]
-
-    helpers_storage = _make_module("homeassistant.helpers.storage")
-
-    class Store:
-        def __init__(self, hass, version, key):
-            self._data = None
-
-        async def async_load(self):
-            return self._data
-
-        async def async_save(self, data):
-            self._data = data
-
-    helpers_storage.Store = Store  # type: ignore[attr-defined]
-
-    # homeassistant.components
-    components = _make_module("homeassistant.components")
-
-    # media_player
-    mp = _make_module("homeassistant.components.media_player")
-
-    class MediaPlayerEntity:
-        pass
-
-    class MediaPlayerEntityFeature:
-        SELECT_SOURCE = 1
-        STOP = 2
-        PLAY = 4
-        PAUSE = 8
-
-    class MediaPlayerState:
-        PLAYING = "playing"
-        IDLE = "idle"
-        OFF = "off"
-        BUFFERING = "buffering"
-
-    mp.MediaPlayerEntity = MediaPlayerEntity  # type: ignore[attr-defined]
-    mp.MediaPlayerEntityFeature = MediaPlayerEntityFeature  # type: ignore[attr-defined]
-    mp.MediaPlayerState = MediaPlayerState  # type: ignore[attr-defined]
-
-    # select
-    sel = _make_module("homeassistant.components.select")
-
-    class SelectEntity:
-        pass
-
-    sel.SelectEntity = SelectEntity  # type: ignore[attr-defined]
-
-    # switch
-    sw = _make_module("homeassistant.components.switch")
-
-    class SwitchEntity:
-        pass
-
-    class SwitchDeviceClass:
-        SWITCH = "switch"
-
-    sw.SwitchEntity = SwitchEntity  # type: ignore[attr-defined]
-    sw.SwitchDeviceClass = SwitchDeviceClass  # type: ignore[attr-defined]
-
-    # number
-    num = _make_module("homeassistant.components.number")
-
-    class NumberEntity:
-        pass
-
-    num.NumberEntity = NumberEntity  # type: ignore[attr-defined]
-
-    # wakeonlan stub
-    wol = _make_module("wakeonlan")
-    wol.send_magic_packet = MagicMock()  # type: ignore[attr-defined]
-
-
-_stub_homeassistant()
-
-# ---------------------------------------------------------------------------
-# Now we can safely import integration modules
-# ---------------------------------------------------------------------------
-from custom_components.pc_remote.api import (  # noqa: E402
+from custom_components.pc_remote.api import (
     CannotConnectError,
     InvalidAuthError,
     PcRemoteClient,
 )
-from custom_components.pc_remote.coordinator import (  # noqa: E402
+from custom_components.pc_remote.coordinator import (
     PcRemoteCoordinator,
     PcRemoteData,
 )
+
+
+# ---------------------------------------------------------------------------
+# Mock Store — replaces homeassistant.helpers.storage.Store in tests
+# ---------------------------------------------------------------------------
+
+class MockStore:
+    """Simple in-memory Store replacement for tests."""
+
+    def __init__(self, hass, version, key):
+        self._data = None
+
+    async def async_load(self):
+        return self._data
+
+    async def async_save(self, data):
+        self._data = data
+
+
+@pytest.fixture(autouse=True)
+def _mock_store():
+    """Replace Store with an in-memory implementation for all tests."""
+    with patch("custom_components.pc_remote.coordinator.Store", MockStore):
+        yield
 
 
 # ---------------------------------------------------------------------------
@@ -300,6 +129,12 @@ def make_mock_client() -> MagicMock:
     client.sleep = AsyncMock()
     client.test_connection = AsyncMock(return_value=True)
     return client
+
+
+def wire_entity(entity, coordinator) -> None:
+    """Wire an entity to a mock coordinator for testing outside HA."""
+    entity.hass = coordinator.hass
+    entity.async_write_ha_state = MagicMock()
 
 
 # ---------------------------------------------------------------------------

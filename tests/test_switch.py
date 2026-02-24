@@ -6,11 +6,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# conftest stubs homeassistant before this import
 from custom_components.pc_remote.api import CannotConnectError
 from custom_components.pc_remote.coordinator import PcRemoteData
 from custom_components.pc_remote.switch import PcRemoteAppSwitch, PcRemotePowerSwitch
-from tests.conftest import make_coordinator_data, make_mock_client, make_mock_coordinator, make_mock_entry
+from tests.conftest import (
+    make_coordinator_data,
+    make_mock_client,
+    make_mock_coordinator,
+    make_mock_entry,
+    wire_entity,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -25,6 +30,7 @@ def _make_power_switch(data=None, client=None, entry=None):
     client = client or make_mock_client()
     entry = entry or make_mock_entry()
     switch = PcRemotePowerSwitch(coordinator, client, entry)
+    wire_entity(switch, coordinator)
     return switch, coordinator, client
 
 
@@ -35,6 +41,7 @@ def _make_app_switch(app_key="chrome", display_name="Chrome", data=None, client=
     client = client or make_mock_client()
     entry = entry or make_mock_entry()
     switch = PcRemoteAppSwitch(coordinator, client, entry, app_key, display_name)
+    wire_entity(switch, coordinator)
     return switch, coordinator, client
 
 

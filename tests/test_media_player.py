@@ -6,11 +6,16 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-# conftest stubs homeassistant before this import
 from custom_components.pc_remote.api import CannotConnectError
 from custom_components.pc_remote.coordinator import PcRemoteData
 from custom_components.pc_remote.media_player import PcRemoteSteamPlayer
-from tests.conftest import make_coordinator_data, make_mock_client, make_mock_coordinator, make_mock_entry
+from tests.conftest import (
+    make_coordinator_data,
+    make_mock_client,
+    make_mock_coordinator,
+    make_mock_entry,
+    wire_entity,
+)
 
 from homeassistant.components.media_player import MediaPlayerState
 
@@ -25,6 +30,7 @@ def _make_player(data: PcRemoteData | None = None, client=None, entry=None):
     client = client or make_mock_client()
     entry = entry or make_mock_entry()
     player = PcRemoteSteamPlayer(coordinator, client, entry)
+    wire_entity(player, coordinator)
     return player, coordinator, client
 
 
