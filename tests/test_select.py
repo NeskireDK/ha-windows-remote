@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-# conftest stubs homeassistant before this import
 from custom_components.pc_remote.api import CannotConnectError
 from custom_components.pc_remote.coordinator import PcRemoteData
 from custom_components.pc_remote.select import (
@@ -15,7 +14,13 @@ from custom_components.pc_remote.select import (
     PcRemoteMonitorProfileSelect,
     PcRemoteMonitorSoloSelect,
 )
-from tests.conftest import make_coordinator_data, make_mock_client, make_mock_coordinator, make_mock_entry
+from tests.conftest import (
+    make_coordinator_data,
+    make_mock_client,
+    make_mock_coordinator,
+    make_mock_entry,
+    wire_entity,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -28,6 +33,7 @@ def _make_entity(cls, data=None, client=None, entry=None):
     client = client or make_mock_client()
     entry = entry or make_mock_entry()
     entity = cls(coordinator, client, entry)
+    wire_entity(entity, coordinator)
     return entity, coordinator, client
 
 
