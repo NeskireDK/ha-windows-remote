@@ -131,7 +131,7 @@ class TestMediaImage:
         player, *_ = _make_player(data)
         url = player.media_image_url
         assert "570" in url
-        assert "steamstatic.com" in url
+        assert "library_600x900" in url
 
     def test_image_url_none_when_no_game(self):
         data = make_coordinator_data(steam_running=None)
@@ -238,6 +238,66 @@ class TestSelectSource:
         await player.async_select_source("Broken Game")
 
         client.steam_run.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# async_media_stop
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# async_turn_on / async_turn_off
+# ---------------------------------------------------------------------------
+
+class TestTurnOnOff:
+    @pytest.mark.asyncio
+    async def test_turn_on_sends_wol_and_sets_power_state(self):
+        data = make_coordinator_data(online=False)
+        player, coordinator, client = _make_player(data)
+
+        await player.async_turn_on()
+
+        coordinator.hass.async_add_executor_job.assert_awaited_once()
+        coordinator.set_power_state.assert_called_once_with(True)
+        player.async_write_ha_state.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_turn_on_no_mac_does_nothing(self):
+        data = make_coordinator_data(online=False)
+        entry = make_mock_entry()
+        entry.data = {"host": "192.168.1.100", "port": 5000, "api_key": "key"}
+        player, coordinator, client = _make_player(data, entry=entry)
+
+        await player.async_turn_on()
+
+        coordinator.hass.async_add_executor_job.assert_not_awaited()
+        coordinator.set_power_state.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_turn_on_wol_error_does_not_propagate(self):
+        data = make_coordinator_data(online=False)
+        player, coordinator, client = _make_player(data)
+        coordinator.hass.async_add_executor_job = AsyncMock(side_effect=OSError("fail"))
+
+        await player.async_turn_on()
+
+        coordinator.set_power_state.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_turn_off_calls_sleep_and_sets_power_state(self):
+        data = make_coordinator_data(online=True)
+        player, coordinator, client = _make_player(data)
+
+        await player.async_turn_off()
+
+        client.sleep.assert_awaited_once()
+        coordinator.set_power_state.assert_called_once_with(False)
+        player.async_write_ha_state.assert_called_once()
+
+    def test_supported_features_include_turn_on_off(self):
+        from homeassistant.components.media_player import MediaPlayerEntityFeature
+        player, *_ = _make_player()
+        assert player._attr_supported_features & MediaPlayerEntityFeature.TURN_ON
+        assert player._attr_supported_features & MediaPlayerEntityFeature.TURN_OFF
 
 
 # ---------------------------------------------------------------------------
