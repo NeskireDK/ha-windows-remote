@@ -119,7 +119,7 @@ class PcRemoteSteamPlayer(
         """Return Steam CDN artwork URL for the running game."""
         running = self.coordinator.data.steam_running
         if running and (app_id := running.get("appId")):
-            return f"https://cdn.cloudflare.steamstatic.com/steam/apps/{app_id}/header.jpg"
+            return f"https://cdn.cloudflare.steamstatic.com/steam/apps/{app_id}/library_600x900.jpg"
         return None
 
     @property
@@ -188,7 +188,7 @@ class PcRemoteSteamPlayer(
                 title=g.get("name", "Unknown"),
                 can_play=True,
                 can_expand=False,
-                thumbnail=f"https://cdn.cloudflare.steamstatic.com/steam/apps/{g.get('appId', 0)}/header.jpg",
+                thumbnail=f"https://cdn.cloudflare.steamstatic.com/steam/apps/{g.get('appId', 0)}/library_600x900.jpg",
             )
             for g in games
         ]
