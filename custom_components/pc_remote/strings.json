@@ -43,6 +43,22 @@
         "data": {
           "mac_address": "Network interface"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure PC Remote",
+        "description": "Update connection details for your PC Remote service.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "api_key": "API Key"
+        }
+      },
+      "reconfigure_select_mac": {
+        "title": "Select Network Interface",
+        "description": "Host changed — select the network interface for Wake-on-LAN.",
+        "data": {
+          "mac_address": "Network interface"
+        }
       }
     },
     "error": {
@@ -52,7 +68,18 @@
       "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "This device is already configured."
+      "already_configured": "This device is already configured.",
+      "reconfigure_successful": "Configuration updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "PC Remote Options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        }
+      }
     }
   }
 }

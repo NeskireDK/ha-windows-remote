@@ -221,7 +221,7 @@ class TestSelectSource:
         games = [{"appId": 570, "name": "Dota 2"}]
         data = make_coordinator_data(online=False, steam_games=games)
         player, coordinator, client = _make_player(data)
-        coordinator.hass.async_create_task = MagicMock()
+        coordinator.hass.async_create_task = MagicMock(side_effect=lambda coro: coro.close())
 
         await player.async_select_source("Dota 2")
 
@@ -430,7 +430,7 @@ class TestPlayMedia:
         games = [{"appId": 570, "name": "Dota 2"}]
         data = make_coordinator_data(online=False, steam_games=games)
         player, coordinator, client = _make_player(data)
-        coordinator.hass.async_create_task = MagicMock()
+        coordinator.hass.async_create_task = MagicMock(side_effect=lambda coro: coro.close())
 
         await player.async_play_media("game", "570")
 
