@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import CannotConnectError, PcRemoteClient
-from .const import CONF_API_KEY, CONF_HOST, CONF_PORT, DOMAIN
+from .const import CONF_API_KEY, CONF_HOST, CONF_PORT, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import PcRemoteCoordinator
 
 _LOGGER = __import__("logging").getLogger(__name__)
@@ -57,7 +57,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         session=session,
     )
 
-    coordinator = PcRemoteCoordinator(hass, client, entry.entry_id)
+    scan_interval = entry.options.get("scan_interval", DEFAULT_SCAN_INTERVAL)
+    coordinator = PcRemoteCoordinator(hass, client, entry.entry_id, scan_interval)
     await coordinator.async_load_steam_cache()
     await coordinator.load_selections()
     await coordinator.async_config_entry_first_refresh()
@@ -68,9 +69,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "coordinator": coordinator,
     }
 
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
+
+
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the entry when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

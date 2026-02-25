@@ -56,13 +56,14 @@ class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
         hass: HomeAssistant,
         client: PcRemoteClient,
         entry_id: str,
+        scan_interval: int = DEFAULT_SCAN_INTERVAL,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+            update_interval=timedelta(seconds=scan_interval),
         )
         self.client = client
         self._power_override: tuple[bool, float] | None = None
