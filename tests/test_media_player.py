@@ -124,24 +124,24 @@ class TestMediaTitleAndSource:
 # ---------------------------------------------------------------------------
 
 class TestMediaImage:
-    def test_image_url_uses_steam_cdn(self):
+    def test_image_url_uses_service_artwork_endpoint(self):
         data = make_coordinator_data(
             steam_running={"appId": 570, "name": "Dota 2"},
         )
         player, *_ = _make_player(data)
         url = player.media_image_url
         assert "570" in url
-        assert "library_600x900" in url
+        assert "/api/steam/artwork/" in url
 
     def test_image_url_none_when_no_game(self):
         data = make_coordinator_data(steam_running=None)
         player, *_ = _make_player(data)
         assert player.media_image_url is None
 
-    def test_image_remotely_accessible(self):
+    def test_image_not_remotely_accessible(self):
         data = make_coordinator_data()
         player, *_ = _make_player(data)
-        assert player.media_image_remotely_accessible is True
+        assert player.media_image_remotely_accessible is False
 
 
 # ---------------------------------------------------------------------------

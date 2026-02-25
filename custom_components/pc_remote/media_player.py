@@ -22,7 +22,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from wakeonlan import send_magic_packet
 
 from .api import CannotConnectError, PcRemoteClient
-from .const import CONF_MAC_ADDRESS, DOMAIN, build_device_info
+from .const import CONF_HOST, CONF_MAC_ADDRESS, CONF_PORT, DOMAIN, build_device_info
 from .coordinator import PcRemoteCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -115,17 +115,24 @@ class PcRemoteSteamPlayer(
         return {"app_id": target.get("appId")} if target else None
 
     @property
+    def _artwork_base_url(self) -> str:
+        """Return the base URL for the service artwork endpoint."""
+        host = self._entry.data[CONF_HOST]
+        port = self._entry.data[CONF_PORT]
+        return f"http://{host}:{port}/api/steam/artwork"
+
+    @property
     def media_image_url(self) -> str | None:
-        """Return Steam CDN artwork URL for the running game."""
+        """Return artwork URL served from the PC's local Steam cache."""
         running = self.coordinator.data.steam_running
         if running and (app_id := running.get("appId")):
-            return f"https://cdn.cloudflare.steamstatic.com/steam/apps/{app_id}/library_600x900.jpg"
+            return f"{self._artwork_base_url}/{app_id}"
         return None
 
     @property
     def media_image_remotely_accessible(self) -> bool:
-        """Image is hosted on Steam CDN — no proxying needed."""
-        return True
+        """Image is on the LAN service, not a public URL."""
+        return False
 
     async def async_will_remove_from_hass(self) -> None:
         """Cancel any pending wake-and-play task on removal."""
@@ -180,6 +187,7 @@ class PcRemoteSteamPlayer(
     ) -> BrowseMedia:
         """Return browsable Steam games."""
         games = self.coordinator.data.steam_games
+        base = self._artwork_base_url
         children = [
             BrowseMedia(
                 media_class=MediaClass.GAME,
@@ -188,7 +196,7 @@ class PcRemoteSteamPlayer(
                 title=g.get("name", "Unknown"),
                 can_play=True,
                 can_expand=False,
-                thumbnail=f"https://cdn.cloudflare.steamstatic.com/steam/apps/{g.get('appId', 0)}/library_600x900.jpg",
+                thumbnail=f"{base}/{g.get('appId', 0)}",
             )
             for g in games
         ]
