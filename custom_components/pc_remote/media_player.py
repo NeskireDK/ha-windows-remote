@@ -191,19 +191,26 @@ class PcRemoteSteamPlayer(
                 return
         _LOGGER.warning("Steam game not found in list: %s", source)
 
+    async def _send_wol_sustained(self, mac: str, duration: int = 20, interval: int = 1) -> None:
+        """Send WoL magic packets repeatedly for `duration` seconds."""
+        end_time = dt_util.utcnow().timestamp() + duration
+        while dt_util.utcnow().timestamp() < end_time:
+            try:
+                await self.hass.async_add_executor_job(send_magic_packet, mac)
+            except (ValueError, OSError) as err:
+                _LOGGER.error("Failed to send WoL packet: %s", err)
+                return
+            await asyncio.sleep(interval)
+
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Wake the PC via Wake-on-LAN."""
+        """Wake the PC via Wake-on-LAN (sustained 20 s retry loop)."""
         mac = self._entry.data.get(CONF_MAC_ADDRESS)
         if not mac:
             _LOGGER.error("MAC address not configured, cannot send WoL packet")
             return
-        try:
-            await self.hass.async_add_executor_job(send_magic_packet, mac)
-        except (ValueError, OSError) as err:
-            _LOGGER.error("Failed to send WoL packet: %s", err)
-            return
         self.coordinator.set_power_state(True)
         self.async_write_ha_state()
+        await self._send_wol_sustained(mac)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Put the PC to sleep."""
@@ -316,10 +323,7 @@ class PcRemoteSteamPlayer(
 
         # Capture target — coordinator refreshes must not clear this
         target = {"appId": app_id, "name": source}
-        try:
-            await self.hass.async_add_executor_job(send_magic_packet, mac)
-        except (ValueError, OSError) as err:
-            _LOGGER.error("Failed to send WoL packet: %s", err)
+        await self._send_wol_sustained(mac)
 
         # Poll /api/health until service responds (max 3 minutes, every 5s)
         online = False
