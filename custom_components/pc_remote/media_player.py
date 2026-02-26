@@ -139,12 +139,14 @@ class PcRemoteSteamPlayer(
         running = self.coordinator.data.steam_running
         if running and (app_id := running.get("appId")):
             return f"{self._artwork_base_url}/{app_id}"
+        if self.state == MediaPlayerState.IDLE:
+            return "https://store.steampowered.com/public/shared/images/header/logo_steam_steam.png"
         return None
 
     @property
     def media_image_remotely_accessible(self) -> bool:
-        """Image is on the LAN service, not a public URL."""
-        return False
+        """Image is on the LAN service, not a public URL — except Steam logo."""
+        return self.state == MediaPlayerState.IDLE
 
     async def async_will_remove_from_hass(self) -> None:
         """Cancel any pending wake-and-play task on removal."""
