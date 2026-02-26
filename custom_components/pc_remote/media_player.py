@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 import logging
 from typing import Any
 
@@ -19,6 +20,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 from wakeonlan import send_magic_packet
 
 from .api import CannotConnectError, PcRemoteClient
@@ -70,6 +72,8 @@ class PcRemoteSteamPlayer(
         self._attr_unique_id = f"{entry.entry_id}_steam"
         self._wake_target: dict | None = None
         self._wake_task: asyncio.Task | None = None
+        self._stop_issued_at: datetime | None = None
+        self._last_playing: dict | None = None
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -80,6 +84,16 @@ class PcRemoteSteamPlayer(
             sw_version=self.coordinator.data.service_version,
         )
 
+    def _in_stop_hold_window(self) -> bool:
+        """Return True if we are within 30 s of a stop command being issued."""
+        if self._stop_issued_at is None:
+            return False
+        elapsed = (dt_util.utcnow() - self._stop_issued_at).total_seconds()
+        if elapsed >= 30:
+            self._stop_issued_at = None
+            return False
+        return True
+
     @property
     def state(self) -> MediaPlayerState:
         """Return the state of the media player."""
@@ -88,19 +102,31 @@ class PcRemoteSteamPlayer(
         if not self.coordinator.data.online:
             return MediaPlayerState.OFF
         if self.coordinator.data.steam_running:
+            self._last_playing = self.coordinator.data.steam_running
+            return MediaPlayerState.PLAYING
+        # Hold optimistic playing state for 30 s after a stop command
+        if self._in_stop_hold_window():
             return MediaPlayerState.PLAYING
         return MediaPlayerState.IDLE
 
     @property
+    def _effective_running(self) -> dict | None:
+        """Return the running game, using last known game during stop hold window."""
+        return (
+            self.coordinator.data.steam_running
+            or (self._last_playing if self._in_stop_hold_window() else None)
+        )
+
+    @property
     def media_title(self) -> str | None:
         """Return the title of the currently playing game."""
-        target = self._wake_target or self.coordinator.data.steam_running
+        target = self._wake_target or self._effective_running
         return target.get("name") if target else None
 
     @property
     def source(self) -> str | None:
         """Return the current game as the source."""
-        target = self._wake_target or self.coordinator.data.steam_running
+        target = self._wake_target or self._effective_running
         return target.get("name") if target else None
 
     @property
@@ -111,7 +137,7 @@ class PcRemoteSteamPlayer(
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes."""
-        target = self._wake_target or self.coordinator.data.steam_running
+        target = self._wake_target or self._effective_running
         attrs: dict[str, Any] = {}
         if target:
             attrs["app_id"] = target.get("appId")
@@ -192,6 +218,7 @@ class PcRemoteSteamPlayer(
         """Stop the currently running game."""
         if not self.coordinator.data.online:
             return
+        self._stop_issued_at = dt_util.utcnow()
         await self._client.steam_stop()
         self.coordinator.data.steam_running = None
         self.async_write_ha_state()
