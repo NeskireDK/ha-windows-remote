@@ -47,6 +47,7 @@ class PcRemoteData:
     current_monitor_profile: str | None = None
     idle_seconds: int | None = None
     steam_bindings: dict | None = None
+    steam_ready: bool | None = None
 
 
 class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
@@ -262,3 +263,4 @@ class PcRemoteCoordinator(DataUpdateCoordinator[PcRemoteData]):
         data.modes = state.get("modes", [])
         data.idle_seconds = state.get("idleSeconds")
         data.steam_bindings = state.get("steamBindings")
+        data.steam_ready = state.get("steamReady")

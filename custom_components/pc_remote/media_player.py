@@ -253,6 +253,15 @@ class PcRemoteSteamPlayer(
             )
             return
 
+        # Ensure Steam is running before sending the launch command
+        if not self.coordinator.data.steam_ready:
+            _LOGGER.debug("Steam not ready, launching Steam Big Picture first")
+            try:
+                await self._client.launch_app("steam")
+            except CannotConnectError as err:
+                _LOGGER.warning("Failed to launch Steam: %s", err)
+            await self._wait_for_steam_ready()
+
         try:
             result = await self._client.steam_run(app_id)
         except CannotConnectError as err:
@@ -300,26 +309,33 @@ class PcRemoteSteamPlayer(
             self.async_write_ha_state()
             return
 
-        # Launch — service now polls internally and returns the running game
+        # Wait for Steam to be ready before launching
+        steam_ready = await self._wait_for_steam_ready()
+        if not steam_ready:
+            _LOGGER.warning("Wake-and-play: Steam did not become ready within timeout")
+
         result = None
         try:
             result = await self._client.steam_run(app_id)
         except CannotConnectError as err:
-            _LOGGER.debug("Wake-and-play steam_run attempt 1: %s", err)
-
-        # One retry after 15s if Steam wasn't ready right after boot
-        if result is None:
-            self._wake_target = target
-            await asyncio.sleep(15)
-            try:
-                result = await self._client.steam_run(app_id)
-            except CannotConnectError as err:
-                _LOGGER.debug("Wake-and-play steam_run attempt 2: %s", err)
+            _LOGGER.warning("Wake-and-play: steam_run failed: %s", err)
 
         if result is None:
-            _LOGGER.warning("Wake-and-play: game did not launch after 2 attempts")
+            _LOGGER.warning("Wake-and-play: game did not launch")
 
         self._wake_target = None
         if result:
             self.coordinator.data.steam_running = result
         await self.coordinator.async_request_refresh()
+
+    async def _wait_for_steam_ready(self, max_wait: int = 120, interval: int = 5) -> bool:
+        """Poll system state until steam_ready is true. Returns True if ready, False on timeout."""
+        for _ in range(max_wait // interval):
+            try:
+                state = await self._client.get_system_state()
+                if state.get("steamReady"):
+                    return True
+            except CannotConnectError:
+                pass
+            await asyncio.sleep(interval)
+        return False
