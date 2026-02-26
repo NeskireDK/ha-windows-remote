@@ -179,7 +179,10 @@ class PcRemoteSteamPlayer(
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Put the PC to sleep."""
-        await self._client.sleep()
+        try:
+            await self._client.sleep()
+        except CannotConnectError:
+            pass  # PC suspended before responding — expected
         self.coordinator.set_power_state(False)
         self.async_write_ha_state()
 

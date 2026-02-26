@@ -14,7 +14,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import PcRemoteClient
+from .api import CannotConnectError, PcRemoteClient
 from .const import CONF_MAC_ADDRESS, DOMAIN, build_device_info
 from .coordinator import PcRemoteCoordinator
 
@@ -108,7 +108,10 @@ class PcRemotePowerSwitch(
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Put the PC to sleep."""
-        await self._client.sleep()
+        try:
+            await self._client.sleep()
+        except CannotConnectError:
+            pass  # PC suspended before responding — expected
         self.coordinator.set_power_state(False)
         self.async_write_ha_state()
 
