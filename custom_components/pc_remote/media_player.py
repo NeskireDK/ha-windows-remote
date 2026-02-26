@@ -88,11 +88,7 @@ class PcRemoteSteamPlayer(
         """Return True if we are within 30 s of a stop command being issued."""
         if self._stop_issued_at is None:
             return False
-        elapsed = (dt_util.utcnow() - self._stop_issued_at).total_seconds()
-        if elapsed >= 30:
-            self._stop_issued_at = None
-            return False
-        return True
+        return (dt_util.utcnow() - self._stop_issued_at).total_seconds() < 30
 
     @property
     def state(self) -> MediaPlayerState:
@@ -162,7 +158,7 @@ class PcRemoteSteamPlayer(
     @property
     def media_image_url(self) -> str | None:
         """Return artwork URL served from the PC's local Steam cache."""
-        running = self.coordinator.data.steam_running
+        running = self._effective_running
         if running and (app_id := running.get("appId")):
             return f"{self._artwork_base_url}/{app_id}"
         if self.state == MediaPlayerState.IDLE:
@@ -229,7 +225,6 @@ class PcRemoteSteamPlayer(
         await self._client.steam_stop()
         self.coordinator.data.steam_running = None
         self.async_write_ha_state()
-        await self.coordinator.async_request_refresh()
 
     async def async_browse_media(
         self,
