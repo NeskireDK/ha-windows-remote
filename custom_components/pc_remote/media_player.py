@@ -17,6 +17,7 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -28,6 +29,8 @@ from .const import CONF_HOST, CONF_MAC_ADDRESS, CONF_PORT, DOMAIN, build_device_
 from .coordinator import PcRemoteCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+_steam_logo_cache: tuple[bytes, str] | None = None
 
 
 async def async_setup_entry(
@@ -155,20 +158,48 @@ class PcRemoteSteamPlayer(
         port = self._entry.data[CONF_PORT]
         return f"http://{host}:{port}/api/steam/artwork"
 
+    _STEAM_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Steam_icon_logo.svg/960px-Steam_icon_logo.svg.png"
+
     @property
     def media_image_url(self) -> str | None:
-        """Return artwork URL served from the PC's local Steam cache."""
+        """Return artwork URL served from the PC's local Steam cache, or Steam logo when idle."""
         running = self._effective_running
         if running and (app_id := running.get("appId")):
             return f"{self._artwork_base_url}/{app_id}"
         if self.state == MediaPlayerState.IDLE:
-            return "https://store.steampowered.com/public/shared/images/header/logo_steam_steam.png"
+            return self._STEAM_LOGO_URL
         return None
 
     @property
     def media_image_remotely_accessible(self) -> bool:
-        """Image is on the LAN service, not a public URL — except Steam logo."""
-        return self.state == MediaPlayerState.IDLE
+        """All images are proxied through HA (LAN artwork or cached logo)."""
+        return False
+
+    async def async_get_media_image(self) -> tuple[bytes | None, str | None]:
+        """Return media image bytes. Caches the Steam logo on first fetch."""
+        running = self._effective_running
+        if running and running.get("appId"):
+            return await super().async_get_media_image()
+        if self.state == MediaPlayerState.IDLE:
+            return await self._get_steam_logo()
+        return None, None
+
+    async def _get_steam_logo(self) -> tuple[bytes | None, str | None]:
+        """Fetch the Steam logo once and return cached bytes on subsequent calls."""
+        global _steam_logo_cache
+        if _steam_logo_cache is not None:
+            return _steam_logo_cache
+        session = async_get_clientsession(self.hass)
+        try:
+            async with session.get(self._STEAM_LOGO_URL) as resp:
+                if resp.status == 200:
+                    content_type = resp.content_type or "image/png"
+                    data = await resp.read()
+                    _steam_logo_cache = (data, content_type)
+                    return _steam_logo_cache
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Failed to fetch Steam logo: %s", err)
+        return None, None
 
     async def async_will_remove_from_hass(self) -> None:
         """Cancel any pending wake-and-play task on removal."""

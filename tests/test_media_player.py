@@ -136,12 +136,12 @@ class TestMediaImage:
     def test_image_url_steam_logo_when_idle(self):
         data = make_coordinator_data(steam_running=None)
         player, *_ = _make_player(data)
-        assert player.media_image_url == "https://store.steampowered.com/public/shared/images/header/logo_steam_steam.png"
+        assert player.media_image_url == "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Steam_icon_logo.svg/960px-Steam_icon_logo.svg.png"
 
-    def test_image_remotely_accessible_when_idle(self):
+    def test_image_remotely_accessible_always_false(self):
         data = make_coordinator_data(steam_running=None)
         player, *_ = _make_player(data)
-        assert player.media_image_remotely_accessible is True
+        assert player.media_image_remotely_accessible is False
 
     def test_image_not_remotely_accessible_when_game_running(self):
         data = make_coordinator_data(steam_running={"appId": 570, "name": "Dota 2"})
