@@ -608,3 +608,55 @@ class TestPlayMedia:
         await player.async_play_media("game", "570")
 
         assert coordinator.data.steam_running is None
+
+
+# ---------------------------------------------------------------------------
+# Volume control
+# ---------------------------------------------------------------------------
+
+class TestVolumeControl:
+    def test_volume_level_returns_normalized_value(self):
+        data = make_coordinator_data(volume=75)
+        player, *_ = _make_player(data)
+        assert player.volume_level == 0.75
+
+    def test_volume_level_returns_zero(self):
+        data = make_coordinator_data(volume=0)
+        player, *_ = _make_player(data)
+        assert player.volume_level == 0.0
+
+    def test_volume_level_returns_one_at_max(self):
+        data = make_coordinator_data(volume=100)
+        player, *_ = _make_player(data)
+        assert player.volume_level == 1.0
+
+    def test_volume_level_none_when_unavailable(self):
+        data = make_coordinator_data(volume=None)
+        player, *_ = _make_player(data)
+        assert player.volume_level is None
+
+    @pytest.mark.asyncio
+    async def test_set_volume_level_calls_api(self):
+        data = make_coordinator_data(volume=50)
+        player, coordinator, client = _make_player(data)
+
+        await player.async_set_volume_level(0.8)
+
+        client.set_volume.assert_awaited_once_with(80)
+        assert coordinator.data.volume == 80
+        player.async_write_ha_state.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_set_volume_level_rounds_correctly(self):
+        data = make_coordinator_data(volume=50)
+        player, coordinator, client = _make_player(data)
+
+        await player.async_set_volume_level(0.555)
+
+        client.set_volume.assert_awaited_once_with(56)
+        assert coordinator.data.volume == 56
+
+    def test_supported_features_include_volume_set(self):
+        from homeassistant.components.media_player import MediaPlayerEntityFeature
+        player, *_ = _make_player()
+        assert player._attr_supported_features & MediaPlayerEntityFeature.VOLUME_SET

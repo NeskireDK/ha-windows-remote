@@ -38,6 +38,6 @@ action:
       - condition: state
         entity_id: !input steam_player
         state: "playing"
-  - action: switch.turn_off
+  - action: homeassistant.turn_off
     target:
       entity_id: !input pc_power_switch

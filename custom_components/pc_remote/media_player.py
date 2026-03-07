@@ -60,6 +60,7 @@ class PcRemoteSteamPlayer(
         | MediaPlayerEntityFeature.STOP
         | MediaPlayerEntityFeature.BROWSE_MEDIA
         | MediaPlayerEntityFeature.PLAY_MEDIA
+        | MediaPlayerEntityFeature.VOLUME_SET
     )
 
     def __init__(
@@ -160,6 +161,21 @@ class PcRemoteSteamPlayer(
                 elif bindings.get("defaultPcMode"):
                     attrs["game_pc_mode_binding"] = bindings["defaultPcMode"]
         return attrs if attrs else None
+
+    @property
+    def volume_level(self) -> float | None:
+        """Return the volume level (0.0 to 1.0)."""
+        vol = self.coordinator.data.volume
+        if vol is None:
+            return None
+        return vol / 100
+
+    async def async_set_volume_level(self, volume: float) -> None:
+        """Set the volume level (0.0 to 1.0)."""
+        level = round(volume * 100)
+        await self._client.set_volume(level)
+        self.coordinator.data.volume = level
+        self.async_write_ha_state()
 
     @property
     def _artwork_base_url(self) -> str:
