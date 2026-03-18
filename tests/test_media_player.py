@@ -863,7 +863,7 @@ class TestWakeAndPlay:
 class TestArtworkCache:
     @pytest.mark.asyncio
     async def test_cache_miss_fetches_and_caches(self):
-        """When live fetch succeeds, artwork is cached and returned."""
+        """When live fetch succeeds, artwork is cached and returned via async_get_browse_image."""
         data = make_coordinator_data(
             online=True,
             steam_running={"appId": 570, "name": "Dota 2"},
@@ -873,16 +873,11 @@ class TestArtworkCache:
         image_bytes = b"fakeimage"
         content_type = "image/jpeg"
 
-        with patch.object(
-            type(player).__mro__[2], "async_get_media_image",
-            new_callable=lambda: AsyncMock,
-        ):
-            # Use async_get_browse_image which is easier to test (no super() dependency)
-            player._async_fetch_image = AsyncMock(return_value=(image_bytes, content_type))
-            player._cache_artwork = AsyncMock()
-            player._get_cached_artwork = AsyncMock(return_value=None)
+        player._async_fetch_image = AsyncMock(return_value=(image_bytes, content_type))
+        player._cache_artwork = AsyncMock()
+        player._get_cached_artwork = AsyncMock(return_value=None)
 
-            result = await player.async_get_browse_image("game", "570")
+        result = await player.async_get_browse_image("game", "570")
 
         assert result == (image_bytes, content_type)
         player._cache_artwork.assert_awaited_once_with("570", image_bytes, content_type)
