@@ -19,11 +19,9 @@ from homeassistant.components.media_player import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later
 from collections.abc import Callable
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 from wakeonlan import send_magic_packet
 
@@ -35,9 +33,9 @@ from .const import (
     DOMAIN,
     FAST_POLL_DURATION,
     FAST_POLL_INTERVAL,
-    build_device_info,
 )
 from .coordinator import PcRemoteCoordinator
+from .entity_base import PcRemoteEntityBase
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,9 +57,7 @@ async def async_setup_entry(
     async_add_entities([PcRemoteSteamPlayer(coordinator, client, entry)])
 
 
-class PcRemoteSteamPlayer(
-    CoordinatorEntity[PcRemoteCoordinator], MediaPlayerEntity
-):
+class PcRemoteSteamPlayer(PcRemoteEntityBase, MediaPlayerEntity):
     """Media player entity for Steam game control."""
 
     _attr_has_entity_name = True
@@ -84,24 +80,15 @@ class PcRemoteSteamPlayer(
         entry: ConfigEntry,
     ) -> None:
         """Initialize the media player entity."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, entry)
         self._client = client
-        self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_steam"
         self._wake_target: dict | None = None
         self._wake_task: asyncio.Task | None = None
         self._stop_issued_at: datetime | None = None
         self._last_playing: dict | None = None
         self._fast_poll_unsub: Callable | None = None
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device info from latest coordinator data."""
-        return build_device_info(
-            self._entry,
-            machine_name=self.coordinator.data.machine_name,
-            sw_version=self.coordinator.data.service_version,
-        )
+        self._normal_poll_interval = coordinator.update_interval
 
     def _in_stop_hold_window(self) -> bool:
         """Return True if we are within 30 s of a stop command being issued."""
@@ -111,21 +98,16 @@ class PcRemoteSteamPlayer(
 
     @property
     def state(self) -> MediaPlayerState:
-        """Return the state of the media player."""
+        """Return the state of the media player.
+
+        This property is pure — it reads pre-computed instance variables set by
+        _handle_coordinator_update and mutates nothing.
+        """
         if self._wake_target is not None:
             return MediaPlayerState.BUFFERING
         if not self.coordinator.data.online:
             return MediaPlayerState.OFF
         if self.coordinator.data.steam_running:
-            # If a stop was issued, the service still reporting a running game
-            # means the process has not exited yet. Slide the hold window
-            # forward so it does not expire while the game is still dying, and
-            # suppress the _last_playing refresh so the window does not get
-            # confused about which game was last seen.
-            if self._stop_issued_at is not None:
-                self._stop_issued_at = dt_util.utcnow()
-                return MediaPlayerState.PLAYING
-            self._last_playing = self.coordinator.data.steam_running
             return MediaPlayerState.PLAYING
         # Hold optimistic playing state for 30 s after a stop command, to
         # absorb the poll-cycle lag between the game exiting and the service
@@ -318,6 +300,7 @@ class PcRemoteSteamPlayer(
         """Switch coordinator to fast polling and schedule restoration."""
         if self._fast_poll_unsub is not None:
             self._fast_poll_unsub()
+        self._normal_poll_interval = self.coordinator.update_interval
         self.coordinator.update_interval = timedelta(seconds=FAST_POLL_INTERVAL)
 
         def _restore_callback(_now: Any) -> None:
@@ -329,15 +312,28 @@ class PcRemoteSteamPlayer(
 
     def _restore_normal_poll(self) -> None:
         """Restore the coordinator to its normal polling interval."""
-        from .const import DEFAULT_SCAN_INTERVAL
-
-        self.coordinator.update_interval = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
+        self.coordinator.update_interval = self._normal_poll_interval
         if self._fast_poll_unsub is not None:
             self._fast_poll_unsub()
             self._fast_poll_unsub = None
 
     def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
+        """Handle updated data from the coordinator.
+
+        Called once per coordinator refresh. Mutates stop-hold and last-playing
+        state here so that the state property remains side-effect-free.
+        """
+        if self.coordinator.data.steam_running:
+            # If a stop was issued, the service still reporting a running game
+            # means the process has not exited yet. Slide the hold window
+            # forward so it does not expire while the game is still dying, and
+            # suppress the _last_playing refresh so the window does not get
+            # confused about which game was last seen.
+            if self._stop_issued_at is not None:
+                self._stop_issued_at = dt_util.utcnow()
+            else:
+                self._last_playing = self.coordinator.data.steam_running
+
         if (
             self._fast_poll_unsub is not None
             and self.coordinator.data.online

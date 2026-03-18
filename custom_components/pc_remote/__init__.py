@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -11,7 +13,7 @@ from .api import CannotConnectError, PcRemoteClient
 from .const import CONF_API_KEY, CONF_HOST, CONF_PORT, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import PcRemoteCoordinator
 
-_LOGGER = __import__("logging").getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
@@ -61,7 +63,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     scan_interval = entry.options.get("scan_interval", DEFAULT_SCAN_INTERVAL)
     coordinator = PcRemoteCoordinator(hass, client, entry.entry_id, scan_interval)
     await coordinator.async_load_steam_cache()
-    await coordinator.load_selections()
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})
